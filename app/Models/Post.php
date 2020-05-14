@@ -11,6 +11,10 @@ class Post extends Model
     public $timestamps = true;
     protected $fillable = array('title', 'image', 'content', 'category_id');
 
+    protected $hidden = [
+        "pivot",
+    ];
+
     public function category()
     {
         return $this->belongsTo('Category');
@@ -18,7 +22,7 @@ class Post extends Model
 
     public function clients()
     {
-        return $this->belongsToMany('App\Models\Client');
+        return $this->belongsToMany('App\Models\Client','client_fav_post');
     }
 
 }

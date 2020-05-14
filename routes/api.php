@@ -30,6 +30,9 @@ Route::group(['prefix'=>'v1','namespace'=>'Api'],function(){
         Route::post('profile','AuthController@profile');
         Route::post('notificationsSettings','AuthController@notificationsSettings');
         Route::post('posts','MainController@posts');
+        Route::post('postFav','MainController@postFav');
+        Route::post('listFavClient','MainController@listFavClient');
+        Route::post('donationCreate','MainController@donationCreate');
 
     });
 });

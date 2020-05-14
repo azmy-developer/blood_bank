@@ -6,22 +6,19 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
 
-class Client extends Model
-//class Client extends Authenticatable
+//class Client extends Model
+class Client extends Authenticatable
 {
 
     protected $table = 'clients';
     public $timestamps = true;
     protected $fillable = array('name', 'email', 'password', 'phone', 'date_of_birth', 'blood_type_id', 'last_donation_date', 'city_id','rest_code_password');
 
-    public function getAuthIdentifier()
-    {
-        return $this->getKey();
-    }
 
     protected $hidden = [
         'password', 'api_token',
     ];
+
 
     //Mutator(SET ATTRIBUTE)
     public function SetpasswordAttribute($value)
@@ -39,9 +36,9 @@ class Client extends Model
         return $this->belongsTo('App\Models\City');
     }
 
-    public function posts()
+    public function favPosts()
     {
-        return $this->belongsToMany('App\Models\Post');
+        return $this->belongsToMany('App\Models\Post','client_fav_post');
     }
 
     public function donationRequests()
