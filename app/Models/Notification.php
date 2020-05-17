@@ -11,14 +11,16 @@ class Notification extends Model
     public $timestamps = true;
     protected $fillable = array('title', 'content', 'donation_request_id');
 
+    protected $hidden = ['pivot'];
+
     public function donationRequests()
     {
-        return $this->belongsTo('DonationRequest');
+        return $this->belongsTo('App\Models\DonationRequest','donation_request_id');
     }
 
     public function clients()
     {
-        return $this->belongsTo('App\Models\Client');
+        return $this->belongsToMany('App\Models\Client');
     }
 
 }

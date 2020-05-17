@@ -8,11 +8,13 @@ use App\Models\Category;
 use App\Models\City;
 use App\Models\ClientFavPost;
 use App\Models\Contact;
+use App\Models\DonationRequest;
 use App\Models\Governorate;
 use App\Models\Post;
 use App\Models\Setting;
+use App\Models\Token;
 use Illuminate\Http\Request;
-use function Psy\debug;
+use Illuminate\Support\Facades\DB;
 
 class MainController extends Controller
 {
@@ -27,6 +29,7 @@ class MainController extends Controller
             return apiResponse('1', 'تم نجاح العمليه',$Governorates);
         }
     }
+
 
     public function cities(Request $request){
 
@@ -44,6 +47,7 @@ class MainController extends Controller
         }
     }
 
+
     public function settings(){
 
         $Settings = Setting::all();
@@ -54,6 +58,7 @@ class MainController extends Controller
             return apiResponse('1', 'تم نجاح العمليه',$Settings);
         }
     }
+
 
     public function blood_types(){
 
@@ -66,6 +71,7 @@ class MainController extends Controller
             return apiResponse('1', 'تم نجاح العمليه',$BloodType);
         }
     }
+
 
     public function contact(Request $request){
 
@@ -93,6 +99,7 @@ class MainController extends Controller
 
 
     }
+
 
     public function categories(){
 
@@ -148,8 +155,10 @@ class MainController extends Controller
 
     public function listFavClient(Request $request){
 
-
+//        DB::enableQueryLog();
         $listPostsFav = $request->user()->favPosts()->latest()->paginate(20);
+        //        dd(DB::getQueryLog());
+
         if (count($listPostsFav)== 0){
             return apiResponse('0', 'لا يوجد بيانات',$listPostsFav);
 
@@ -159,30 +168,160 @@ class MainController extends Controller
     }
 
 
-//    public function donationCreate(Request $request){
+    public function donationRequestCreate(Request $request){
+
+        $validator = validator()->make($request->all(), [
+            'patient_name' => 'required',
+            'patient_phone' => 'required:digits:11',
+            'hospital_name' => 'required',
+            'city_id' => 'required|exists:cities,id',
+            'blood_type_id' => 'required|exists:blood_types,id',
+            'patient_age' => 'required:digits',
+            'num_bags' => 'required:digits',
+            'hospital_address' => 'required',
+            'latitude' => 'required',
+            'longitude' => 'required',
+            'notes' => 'required',
+
+        ]);
+
+        if ($validator->fails()) {
+            $data = $validator->errors();
+            return apiResponse('0', $validator->errors(), $data);
+        }
+
+        //Create Donation Request
+        $donationRequrest = $request->user()->donationRequests()->create($request->all());
+
+
+        //Get client Ids
+
+        $clientIds = $donationRequrest->cities->governorate->clients()->whereHas('bloodType',function ($query) use ($request){
+            $query->where('blood_types.id',$request->blood_type_id);
+        })->pluck('clients.id')->toArray();
+
+        if (count($clientIds)){
+            //create notification on database
+            $notif = $donationRequrest->notification()->create([
+
+                'title'   => "يوجد حاله تبرع بالقرب منك",
+                'content' => $donationRequrest->bloodType->name ."محتاج متبرع لفصيله"
+            ]);
+
+            // attach clients to this notif
+            $notif->clients()->attach($clientIds);
+
+            //get tokens
+
+            $tokens = Token::whereIn('client_id',$clientIds)->where('token','!=',null)->pluck('token')->toArray();
+
+            if (count($tokens)){
+
+                $title   = $notif->title;
+                $content = $notif->content;
+                $data    = [
+                  'dontation_request_id' => $donationRequrest->id
+                ];
+
+                $send = notifyByFirebase($title,$content,$tokens,$data);
+                info("firebase result : " . $send);
+
+            }
+
+
+        }
+            return apiResponse("1" , "تم الاضافه بنجاح والارسال" , $send);
+    }
+
+// get donations and get donation by id and update is_read in notification ......
+
+//    public function getDonations(Request $request){
 //
-//        $validator = validator()->make($request->all(), [
-//            'patient_name' => 'required',
-//            'patient_phone' => 'required:digits:11',
-//            'hospital_name' => 'required',
-//            'city_id' => 'required|exists:cities,id',
-//            'blood_type_id' => 'required|exists:blood_types,id',
-//            'patient_age' => 'required:digits',
-//            'num_bags' => 'required|digits',
-//            'hospital_address' => 'required',
-//            'latitude' => 'required',
-//            'longitude' => 'required',
+//        $dondations = $request->user()->donationRequests()->where(function ($query) use ($request){
 //
-//        ]);
+//            if ($request->has('id')){
 //
-//        if ($validator->fails()) {
-//            $data = $validator->errors();
-//            return apiResponse('0', $validator->errors(), $data);
+//                $query->where('donation_requests.id',$request->id);
+//
+//            }
+//
+//        })->get();
+//
+//
+//        if ($request->has('id')) {
+//            if ($request->user()->notifications()->where('donation_request_id', $request->id)->first()) {
+//
+//                $dondation = $request->user()->notifications()->where('donation_request_id', $request->id)->first();
+//
+//                $update =  $request->user()->notifications()->updateExistingPivot($dondation->id, [
+//                    'is_read' => 1
+//                ]);
+//            }
+//            dd($update);
+//
 //        }
+//        if (count($dondations)== 0){
+//            return apiResponse('0', 'لا يوجد بيانات',$dondations);
 //
-//
-//
+//        }else{
+//            return apiResponse('1', 'تم نجاح العمليه',$dondations);
+//        }
 //    }
+
+// function end
+
+
+    public function getDonations(Request $request){
+
+        $donations = $request->user()->donationRequests()->latest()->paginate(10);
+
+        if (count($donations)== 0){
+            return apiResponse('0', 'لا يوجد بيانات',$donations);
+
+        }else{
+            return apiResponse('1', 'تم نجاح العمليه',$donations);
+        }
+    }
+
+
+    public function Donation(Request $request){
+
+        $donation = DonationRequest::with('cities','clients','bloodType')->find($request->id);
+        if (!$donation){
+            return apiResponse('0', 'لا يوجد بيانات');
+        }
+
+        if ($request->user()->notifications()->where('donation_request_id',$request->id)->first())
+        {
+
+            $don = $request->user()->notifications()->where('donation_request_id',$donation->id)->first();
+            $request->user()->notifications()->updateExistingPivot($don->id, [
+                'is_read' => 1
+            ]);
+
+        }
+
+            return apiResponse('1', 'تم نجاح العمليه',$donation);
+    }
+
+
+
+
+    public function listofNotification(Request $request){
+
+//        DB::enableQueryLog();
+
+        $notifications = $request->user()->notifications()->with('donationRequests')->latest()->paginate(20);
+
+
+        if (count($notifications)== 0){
+            return apiResponse('0', 'لا يوجد بيانات',$notifications);
+
+        }else{
+            return apiResponse('1', 'تم نجاح العمليه',$notifications);
+        }
+
+    }
 
 
 }

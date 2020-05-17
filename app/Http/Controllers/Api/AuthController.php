@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use App\models\Token;
 
 
 class AuthController extends Controller
@@ -41,8 +42,6 @@ class AuthController extends Controller
         }
         $request->merge(['password' => bcrypt($request->password)]);
         $client = Client::create($request->all());
-        $client->Cities()->attach($request->city_id);
-        $client->bloodType()->attach($request->blood_type_id);
         $client->api_token = Str::random(60);
         $client->save();
         return apiResponse('1', 'تم التسجيل بنجاح', [
@@ -199,6 +198,7 @@ class AuthController extends Controller
 
     public function notificationsSettings(Request $request)
     {
+
         $rules = [
             'governorates' => 'exists:governorates,id|array',
             'blood_types' => 'exists:blood_types,id|array',
@@ -215,7 +215,6 @@ class AuthController extends Controller
             // $arr = [1,2,3,4,7];
             // sync (1,2,4,5,6)
             // 1,2,3,4,5,6,7
-            // dd($request->user());
             $request->user()->governorates()->sync($request->governorates); // attach - detach() - toggle() - sync
         }
         if ($request->has('blood_types')) {
@@ -229,6 +228,47 @@ class AuthController extends Controller
         );
         return apiResponse(1, 'تم  التحديث', $data);
 
+
+    }
+
+
+
+    public function registerToken(Request $request){
+
+        $validator = validator()->make($request->all(), [
+            'token' => 'required',
+            'platform' =>'required|in:android,ios'
+
+        ]);
+
+        if ($validator->fails()) {
+            $data = $validator->errors();
+            return apiResponse('0', $validator->errors(), $data);
+        }
+
+
+        Token::where('token',$request->token)->delete();
+        $token = $request->user()->tokens()->create($request->all());
+        return apiResponse('1','تم اضافة التوكين بنجاح',$token);
+
+    }
+
+
+    public function removeToken(Request $request){
+
+        $validator = validator()->make($request->all(), [
+            'token' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            $data = $validator->errors();
+            return apiResponse('0', $validator->errors(), $data);
+        }
+
+
+        Token::where('token',$request->token)->delete();
+
+        return apiResponse('1','تم الحذف بنجاح');
 
     }
 

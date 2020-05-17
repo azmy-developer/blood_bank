@@ -13,7 +13,7 @@ class DonationRequest extends Model
 
     public function clients()
     {
-        return $this->belongsTo('App\Models\Client');
+        return $this->belongsTo('App\Models\Client','client_id');
     }
 
     public function notification()
@@ -23,7 +23,7 @@ class DonationRequest extends Model
 
     public function cities()
     {
-        return $this->belongsTo('App\Models\City');
+        return $this->belongsTo('App\Models\City','city_id');
     }
 
     public function bloodType()

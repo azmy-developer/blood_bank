@@ -29,11 +29,8 @@ Route::group(['prefix'=>'v1','namespace'=>'Api'],function(){
     Route::group(['middleware' => 'auth:api'], function () {
         Route::post('profile','AuthController@profile');
         Route::post('notificationsSettings','AuthController@notificationsSettings');
-        Route::post('posts','MainController@posts');
-        Route::post('postFav','MainController@postFav');
-        Route::post('listFavClient','MainController@listFavClient');
-        Route::post('donationCreate','MainController@donationCreate');
-
+        Route::post('registerToken','AuthController@registerToken');
+        Route::post('removeToken','AuthController@removeToken');
     });
 });
 
@@ -44,6 +41,16 @@ Route::group(['prefix'=>'v1','namespace'=>'Api'],function(){
     Route::get('blood_types','MainController@blood_types');
     Route::post('contact','MainController@contact');
     Route::get('categories','MainController@categories');
+
+    Route::group(['middleware' => 'auth:api'], function () {
+        Route::post('posts','MainController@posts');
+        Route::post('postFav','MainController@postFav');
+        Route::post('listFavClient','MainController@listFavClient');
+        Route::post('donationRequestCreate','MainController@donationRequestCreate');
+        Route::post('getDonations','MainController@getDonations');
+        Route::post('Donation','MainController@Donation');
+        Route::post('listofNotification','MainController@listofNotification');
+    });
 
 });
 
